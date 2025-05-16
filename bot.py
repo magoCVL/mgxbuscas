@@ -85,16 +85,38 @@ async def comando_recarga(update: Update, context):
             "valor": valor
         }
         await update.message.reply_html(
-            f"🔐 PIX criado para recarga de R${valor:.2f}:\n\n<code>{pix['qr_code']}</code>\n\nApós pagar, seu saldo será atualizado automaticamente."
+            f"🔐 PIX criado para recarga de R${valor:.2f}:\n\n<code>{pix['qr_code']}</code>\n\n<a href='{pix['qr_code_base64']}'>Clique aqui para pagar</a>\n\nApós pagar, seu saldo será atualizado automaticamente."
         )
-    except:
+    except Exception as e:
+        logging.error(f"Erro ao gerar PIX: {e}")
         await update.message.reply_text("❌ Comando inválido. Use: /recarga VALOR")
+
+# ADM ADICIONA SALDO
+async def comando_addsaldo(update: Update, context):
+    user_id = update.effective_user.id
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ Você não tem permissão pra usar esse comando.")
+        return
+
+    try:
+        partes = update.message.text.split()
+        alvo = int(partes[1])
+        valor = int(partes[2])
+
+        if alvo not in USUARIOS:
+            USUARIOS[alvo] = {"saldo": 0, "indicados": 0, "nome": "SemNome"}
+
+        USUARIOS[alvo]['saldo'] += valor
+        await update.message.reply_text(f"✅ Saldo de {valor} adicionado para ID {alvo}.")
+    except:
+        await update.message.reply_text("❌ Use corretamente: /addsaldo ID VALOR")
 
 # SETUP
 if __name__ == '__main__':
     app = Application.builder().token(TOKEN_TELEGRAM).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("recarga", comando_recarga))
+    app.add_handler(CommandHandler("addsaldo", comando_addsaldo))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r"^/cpf_\d{11}$"), comando_cpf))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.run_polling()
